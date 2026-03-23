@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>祝唐利平生日快乐</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            image-rendering: pixelated;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .birthday-text {
+            font-size: 4rem;
+            color: #FFD700;
+            text-shadow: 0 0 10px #FF4500, 0 0 20px #FF4500;
+            animation: glow 2s infinite alternate;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        
+        .photo-container {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 5px solid #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            animation: float 3s ease-in-out infinite;
+            image-rendering: pixelated;
+        }
+        
+        .photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: contrast(1.2) brightness(1.1);
+        }
+        
+        .music-control {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 3;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border: 2px solid #FFD700;
+            transition: all 0.3s;
+        }
+        
+        .music-control:hover {
+            transform: scale(1.1);
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        .music-icon {
+            font-size: 24px;
+            color: #FFD700;
+        }
+        
+        .instructions {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 3;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            border: 1px solid #FFD700;
+        }
+        
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+        
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px #FF4500, 0 0 20px #FF4500;
+            }
+            to {
+                text-shadow: 0 0 20px #FF4500, 0 0 30px #FF4500, 0 0 40px #FF4500;
+            }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .birthday-text {
+                font-size: 2.5rem;
+            }
+            
+            .photo-container {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .instructions {
+                font-size: 12px;
+                bottom: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="content">
+        <div class="birthday-text">祝唐利平生日快乐</div>
+        <div class="photo-container">
+            <!-- 这里替换为寿星的照片URL -->
+            <img src="tlp.jpg" alt="唐利平" class="photo">
+        </div>
+    </div>
+    
+    <div class="music-control" id="musicControl">
+        <div class="music-icon">♪</div>
+    </div>
+    
+    <div class="instructions">
+        点击屏幕发射烟花 | 按空格键增加烟花
+    </div>
+
+    <!-- 生日快乐歌音频 -->
+    <audio id="birthdaySong" loop>
+        <source src="全网最多人用的《生日快乐》就是这个版本啦 祝你生日快乐.mp3" type="audio/mpeg">
+        
+    </audio>
+
+    <script>
+        // 烟花效果
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 设置canvas尺寸为窗口尺寸
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // 降低分辨率实现像素效果
+        const pixelSize = 4;
+        const scaledWidth = Math.floor(canvas.width / pixelSize);
+        const scaledHeight = Math.floor(canvas.height / pixelSize);
+        
+        // 创建离屏canvas用于像素效果
+        const bufferCanvas = document.createElement('canvas');
+        bufferCanvas.width = scaledWidth;
+        bufferCanvas.height = scaledHeight;
+        const bufferCtx = bufferCanvas.getContext('2d');
+        
+        // 烟花和粒子数组
+        let fireworks = [];
+        let particles = [];
+        
+        // 颜色数组
+        const colors = [
+            '#FF5252', '#FF4081', '#E040FB', '#7C4DFF', 
+            '#536DFE', '#448AFF', '#40C4FF', '#18FFFF',
+            '#64FFDA', '#69F0AE', '#B2FF59', '#EEFF41',
+            '#FFFF00', '#FFD740', '#FFAB40', '#FF6E40'
+        ];
+        
+        // 像素化绘制函数
+        function drawPixelated() {
+            // 清除主canvas
+            ctx.fillStyle = 'rgba(10, 10, 20, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 清除离屏canvas
+            bufferCtx.fillStyle = 'rgba(10, 10, 20, 0.1)';
+            bufferCtx.fillRect(0, 0, scaledWidth, scaledHeight);
+            
+            // 绘制所有烟花到离屏canvas
+            for (let i = 0; i < fireworks.length; i++) {
+                fireworks[i].draw(bufferCtx);
+            }
+            
+            // 绘制所有粒子到离屏canvas
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].draw(bufferCtx);
+            }
+            
+            // 将离屏canvas绘制到主canvas，实现像素化效果
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(bufferCanvas, 0, 0, scaledWidth, scaledHeight, 0, 0, canvas.width, canvas.height);
+        }
+        
+        // 烟花类 - 窜天猴式
+        class Firework {
+            constructor() {
+                // 从底部随机位置发射
+                this.x = Math.random() * scaledWidth;
+                this.y = scaledHeight;
+                
+                // 随机目标高度（在画布上半部分）
+                this.targetY = Math.random() * (scaledHeight / 2) + 10;
+                
+                // 初始速度
+                this.speed = Math.random() * 2 + 3;
+                
+                // 轨迹点
+                this.trail = [];
+                
+                // 爆炸标志
+                this.exploded = false;
+                
+                // 颜色
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                
+                // 大小
+                this.size = 2;
+                
+                // 重力
+                this.gravity = 0.02;
+                
+                // 透明度
+                this.alpha = 1;
+            }
+            
+            update() {
+                // 如果还没爆炸，继续上升
+                if (!this.exploded) {
+                    this.y -= this.speed;
+                    
+                    // 保存轨迹
+                    this.trail.push({x: this.x, y: this.y});
+                    if (this.trail.length > 3) {
+                        this.trail.shift();
+                    }
+                    
+                    // 检查是否到达目标高度
+                    if (this.y <= this.targetY) {
+                        this.explode();
+                    }
+                }
+                
+                // 如果飞出画布，标记为需要移除
+                if (this.y < 0) {
+                    this.alpha = 0;
+                }
+            }
+            
+            explode() {
+                this.exploded = true;
+                const particleCount = 60 + Math.floor(Math.random() * 30);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle(this.x, this.y, this.color));
+                }
+            }
+            
+            draw(ctx) {
+                ctx.globalAlpha = this.alpha;
+                
+                // 绘制轨迹
+                for (let i = 0; i < this.trail.length; i++) {
+                    const point = this.trail[i];
+                    ctx.fillStyle = this.color;
+                    ctx.globalAlpha = i / this.trail.length;
+                    ctx.fillRect(Math.floor(point.x), Math.floor(point.y), 2, 2);
+                }
+                
+                ctx.globalAlpha = this.alpha;
+                
+                // 绘制烟花主体（像素风格）
+                ctx.fillStyle = this.color;
+                ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.size, this.size);
+            }
+        }
+        
+        // 粒子类
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = Math.random() * 3 + 2;
+                this.vx = Math.cos(this.angle) * this.speed;
+                this.vy = Math.sin(this.angle) * this.speed;
+                this.alpha = 1;
+                this.gravity = 0.05;
+                this.friction = 0.97;
+                this.decay = Math.random() * 0.015 + 0.005;
+                this.size = Math.random() > 0.5 ? 2 : 1;
+            }
+            
+            update() {
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+                this.vy += this.gravity;
+                
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.decay;
+            }
+            
+            draw(ctx) {
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.size, this.size);
+            }
+        }
+        
+        // 动画循环
+        function animate() {
+            // 随机生成新烟花
+            if (Math.random() < 0.03) {
+                fireworks.push(new Firework());
+            }
+            
+            // 更新所有烟花
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                fireworks[i].update();
+                
+                // 移除已经爆炸或消失的烟花
+                if (fireworks[i].alpha <= 0 || fireworks[i].exploded) {
+                    fireworks.splice(i, 1);
+                }
+            }
+            
+            // 更新所有粒子
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                
+                // 移除透明度为0的粒子
+                if (particles[i].alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            // 绘制像素化效果
+            drawPixelated();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // 音乐控制
+        const birthdaySong = document.getElementById('birthdaySong');
+        const musicControl = document.getElementById('musicControl');
+        let isPlaying = false;
+        
+        musicControl.addEventListener('click', function() {
+            if (isPlaying) {
+                birthdaySong.pause();
+                musicControl.innerHTML = '<div class="music-icon">♪</div>';
+            } else {
+                birthdaySong.play().catch(e => {
+                    console.log("自动播放被阻止，需要用户交互");
+                });
+                musicControl.innerHTML = '<div class="music-icon">♫</div>';
+            }
+            isPlaying = !isPlaying;
+        });
+        
+        // 窗口大小改变时调整canvas尺寸
+        window.addEventListener('resize', function() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // 重新计算缩放尺寸
+            scaledWidth = Math.floor(canvas.width / pixelSize);
+            scaledHeight = Math.floor(canvas.height / pixelSize);
+            bufferCanvas.width = scaledWidth;
+            bufferCanvas.height = scaledHeight;
+        });
+        
+        // 点击屏幕添加烟花
+        canvas.addEventListener('click', function(e) {
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const firework = new Firework();
+                    firework.x = e.clientX / pixelSize;
+                    firework.y = e.clientY / pixelSize;
+                    firework.targetY = Math.random() * (scaledHeight / 2);
+                    fireworks.push(firework);
+                }, i * 200);
+            }
+        });
+        
+        // 添加键盘控制（空格键增加烟花）
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                for (let i = 0; i < 5; i++) {
+                    fireworks.push(new Firework());
+                }
+            }
+        });
+        
+        // 开始动画
+        animate();
+        
+        // 自动播放音乐（需要用户交互）
+        document.addEventListener('click', function autoPlayMusic() {
+            if (!isPlaying) {
+                birthdaySong.play().catch(e => {
+                    console.log("自动播放被阻止");
+                });
+                musicControl.innerHTML = '<div class="music-icon">♫</div>';
+                isPlaying = true;
+            }
+            document.removeEventListener('click', autoPlayMusic);
+        });
+    </script>
+</body>
+</html>
